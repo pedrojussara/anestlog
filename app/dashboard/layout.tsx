@@ -1,16 +1,20 @@
 import Link from 'next/link'
-import { Activity, LayoutDashboard, Stethoscope, LogOut, PlusCircle, BarChart2, Zap, XCircle, Users, UserCircle, Target } from 'lucide-react'
+import {
+  Activity, LayoutDashboard, Stethoscope, LogOut, PlusCircle,
+  BarChart2, Zap, XCircle, Users, UserCircle, Target,
+} from 'lucide-react'
 import { logout } from '@/app/actions/auth'
+import MobileBottomNav from '@/components/layout/MobileBottomNav'
 
 const navItems = [
-  { href: '/dashboard',              label: 'Dashboard',    icon: LayoutDashboard },
-  { href: '/dashboard/cirurgias',    label: 'Cirurgias',    icon: Stethoscope },
-  { href: '/dashboard/graficos',     label: 'Gráficos',     icon: BarChart2 },
-  { href: '/dashboard/bloqueios',    label: 'Bloqueios',    icon: Zap },
-  { href: '/dashboard/falhas',       label: 'Falhas',       icon: XCircle },
-  { href: '/dashboard/metas',        label: 'Metas',        icon: Target },
-  { href: '/dashboard/comparacoes',  label: 'Comunidade',   icon: Users },
-  { href: '/dashboard/perfil',       label: 'Perfil',       icon: UserCircle },
+  { href: '/dashboard',              label: 'Início',    icon: LayoutDashboard },
+  { href: '/dashboard/cirurgias',    label: 'Histórico', icon: Stethoscope },
+  { href: '/dashboard/graficos',     label: 'Gráficos',  icon: BarChart2 },
+  { href: '/dashboard/bloqueios',    label: 'Bloqueios', icon: Zap },
+  { href: '/dashboard/falhas',       label: 'Falhas',    icon: XCircle },
+  { href: '/dashboard/metas',        label: 'Metas',     icon: Target },
+  { href: '/dashboard/comparacoes',  label: 'Social',    icon: Users },
+  { href: '/dashboard/perfil',       label: 'Perfil',    icon: UserCircle },
 ]
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -71,7 +75,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* Main */}
-      <div className="flex flex-1 flex-col">
+      <div className="flex flex-1 flex-col min-w-0">
         {/* Mobile header */}
         <header className="flex md:hidden items-center justify-between border-b border-gray-800 bg-gray-900 px-4 py-3">
           <div className="flex items-center gap-2">
@@ -80,41 +84,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               Anest<span className="text-cyan-400">Log</span>
             </span>
           </div>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/dashboard/cirurgias/nova"
-              className="flex items-center gap-1.5 rounded-lg bg-cyan-500 px-3 py-1.5
-                         text-xs font-semibold text-gray-900 hover:bg-cyan-400 transition-colors"
-            >
-              <PlusCircle size={13} />
-              Nova Cirurgia
-            </Link>
-            <form action={logout}>
-              <button type="submit" className="text-slate-500 hover:text-red-400 transition-colors p-1">
-                <LogOut size={18} />
-              </button>
-            </form>
-          </div>
+          <form action={logout}>
+            <button type="submit" className="text-slate-500 hover:text-red-400 transition-colors p-1">
+              <LogOut size={18} />
+            </button>
+          </form>
         </header>
 
-        <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
+        {/* Page content — pb-28 on mobile to clear the bottom nav */}
+        <main className="flex-1 overflow-auto p-4 pb-28 md:p-6 md:pb-6 lg:p-8">
           {children}
         </main>
 
-        {/* Mobile bottom nav */}
-        <nav className="flex md:hidden border-t border-gray-800 bg-gray-900">
-          {navItems.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className="flex flex-1 flex-col items-center gap-1 py-3 text-slate-500
-                         hover:text-cyan-400 transition-colors text-xs"
-            >
-              <Icon size={20} />
-              {label}
-            </Link>
-          ))}
-        </nav>
+        {/* Mobile bottom nav (client component for active-state + Mais drawer) */}
+        <MobileBottomNav />
       </div>
     </div>
   )
