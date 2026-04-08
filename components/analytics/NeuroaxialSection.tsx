@@ -10,10 +10,12 @@ import EmptyChart from './EmptyChart'
 
 // ── Cores ──────────────────────────────────────────────────────────────────
 
-const C_RAQUI    = '#22d3ee'
-const C_PERIDURAL = '#a78bfa'
-const C_SENTADO  = '#22d3ee'
-const C_DECUBITO = '#f59e0b'
+const C_RAQUI       = '#22d3ee'
+const C_PERIDURAL   = '#a78bfa'
+const C_SENTADO     = '#22d3ee'
+const C_DECUBITO    = '#f59e0b'
+const C_MEDIANA     = '#34d399'
+const C_PARAMEDIANA = '#f472b6'
 
 // ── Tooltips ───────────────────────────────────────────────────────────────
 
@@ -168,6 +170,61 @@ function PositionDonut({ title, sentado, decubito }: {
   )
 }
 
+/** Mini donut for puncture approach distribution */
+function PunctureDonut({ title, mediana, paramediana }: {
+  title: string
+  mediana: number
+  paramediana: number
+}) {
+  const total = mediana + paramediana
+  if (total === 0) {
+    return (
+      <div className="flex flex-col gap-2">
+        <p className="text-xs font-semibold text-slate-300">{title}</p>
+        <EmptyChart height={140} />
+      </div>
+    )
+  }
+  const pieData = [
+    { name: 'Mediana',     value: mediana,     pct: Math.round(mediana / total * 100),     fill: C_MEDIANA },
+    { name: 'Paramediana', value: paramediana, pct: Math.round(paramediana / total * 100), fill: C_PARAMEDIANA },
+  ]
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-xs font-semibold text-slate-300">{title}</p>
+      <ResponsiveContainer width="100%" height={150}>
+        <PieChart>
+          <Pie
+            data={pieData}
+            cx="50%"
+            cy="50%"
+            innerRadius={42}
+            outerRadius={62}
+            paddingAngle={3}
+            dataKey="value"
+          >
+            {pieData.map((entry) => (
+              <Cell key={entry.name} fill={entry.fill} opacity={0.9} />
+            ))}
+          </Pie>
+          <Tooltip content={<PieTooltip />} />
+        </PieChart>
+      </ResponsiveContainer>
+      <div className="flex flex-col gap-1">
+        {pieData.map((d) => (
+          <div key={d.name} className="flex items-center justify-between text-xs">
+            <div className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full" style={{ background: d.fill }} />
+              <span className="text-slate-400">{d.name}</span>
+            </div>
+            <span className="font-semibold text-slate-300">{d.value} <span className="text-slate-600">({d.pct}%)</span></span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────
 
 export default function NeuroaxialSection({ data }: { data: NeuroaxialData }) {
@@ -204,6 +261,12 @@ export default function NeuroaxialSection({ data }: { data: NeuroaxialData }) {
   const hasPosData = (
     data.raqui_position.sentado + data.raqui_position.decubito +
     data.peridural_position.sentado + data.peridural_position.decubito
+  ) > 0
+
+  // Whether we have puncture approach data at all
+  const hasPunctureData = (
+    data.raqui_puncture.mediana + data.raqui_puncture.paramediana +
+    data.peridural_puncture.mediana + data.peridural_puncture.paramediana
   ) > 0
 
   // Position vs attempts — only show rows with data
@@ -287,6 +350,28 @@ export default function NeuroaxialSection({ data }: { data: NeuroaxialData }) {
           </ResponsiveContainer>
         </div>
       </div>
+
+      {/* ── Puncture approach distribution ────────────────────── */}
+      {hasPunctureData && (
+        <div className="rounded-2xl border border-gray-700 bg-gray-800 p-5">
+          <div className="mb-4">
+            <h3 className="text-sm font-semibold text-slate-200">Via de Punção</h3>
+            <p className="text-xs text-slate-500 mt-0.5">Distribuição Mediana vs Paramediana</p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <PunctureDonut
+              title="Raquianestesia"
+              mediana={data.raqui_puncture.mediana}
+              paramediana={data.raqui_puncture.paramediana}
+            />
+            <PunctureDonut
+              title="Peridural"
+              mediana={data.peridural_puncture.mediana}
+              paramediana={data.peridural_puncture.paramediana}
+            />
+          </div>
+        </div>
+      )}
 
       {/* ── Charts grid: learning curve + distribution ─────────── */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

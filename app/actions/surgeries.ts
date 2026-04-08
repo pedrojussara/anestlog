@@ -10,8 +10,9 @@ export interface ProcedureInput {
   status: 'success' | 'failure'
   is_difficult_airway: boolean
   notes: string
-  attempts?: number | null          // raquidiana e peridural
-  patient_position?: string | null  // 'sentado' | 'decubito_lateral'
+  attempts?: number | null           // raquidiana e peridural
+  patient_position?: string | null   // 'sentado' | 'decubito_lateral'
+  puncture_approach?: string | null  // 'mediana' | 'paramediana'
   nerve_block_type?: string
   nerve_block_pain?: number | null
 }
@@ -67,8 +68,9 @@ export async function saveSurgery(input: SurgeryInput) {
         status: proc.status,
         is_difficult_airway: proc.is_difficult_airway,
         notes: proc.notes || null,
-        attempts:         proc.attempts ?? null,
-        patient_position: proc.patient_position || null,
+        attempts:          proc.attempts ?? null,
+        patient_position:  proc.patient_position || null,
+        puncture_approach: proc.puncture_approach || null,
       })
       .select('id')
       .single()

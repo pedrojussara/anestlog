@@ -99,6 +99,8 @@ export default function CirurgiaCard({ surgery }: Props) {
                     )}
                     {proc.patient_position === 'sentado' && ' · Sentado'}
                     {proc.patient_position === 'decubito_lateral' && ' · Decúbito Lateral'}
+                    {proc.puncture_approach === 'mediana' && ' · Mediana'}
+                    {proc.puncture_approach === 'paramediana' && ' · Paramediana'}
                   </span>
                 )}
               </span>

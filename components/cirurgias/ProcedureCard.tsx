@@ -48,6 +48,7 @@ export default function ProcedureCard({ index, procedure, onChange, onRemove, ca
       is_difficult_airway: false,
       attempts: null,
       patient_position: null,
+      puncture_approach: null,
       nerve_block_type: undefined,
       nerve_block_pain: null,
     })
@@ -165,6 +166,31 @@ export default function ProcedureCard({ index, procedure, onChange, onRemove, ca
                     className={[
                       'rounded-lg border py-2.5 text-sm font-medium transition-all',
                       procedure.patient_position === opt.value
+                        ? 'border-cyan-500/50 bg-cyan-500/15 text-cyan-400'
+                        : 'border-gray-600 bg-gray-900 text-slate-500 hover:border-gray-500 hover:text-slate-300',
+                    ].join(' ')}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Via de punção */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-slate-400">Via de punção <span className="text-slate-600">(opcional)</span></label>
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  { value: 'mediana',     label: 'Mediana' },
+                  { value: 'paramediana', label: 'Paramediana' },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => set('puncture_approach', procedure.puncture_approach === opt.value ? null : opt.value)}
+                    className={[
+                      'rounded-lg border py-2.5 text-sm font-medium transition-all',
+                      procedure.puncture_approach === opt.value
                         ? 'border-cyan-500/50 bg-cyan-500/15 text-cyan-400'
                         : 'border-gray-600 bg-gray-900 text-slate-500 hover:border-gray-500 hover:text-slate-300',
                     ].join(' ')}

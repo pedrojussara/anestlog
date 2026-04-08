@@ -38,6 +38,11 @@ export interface PosVsAttemptsEntry {
   peridural_avg: number | null
 }
 
+export interface PunctureStats {
+  mediana: number
+  paramediana: number
+}
+
 export interface NeuroaxialData {
   // Summaries
   raqui_total: number
@@ -55,12 +60,16 @@ export interface NeuroaxialData {
   peridural_position: PositionStats
   // Position vs attempts (for cross chart)
   position_vs_attempts: PosVsAttemptsEntry[]
+  // Puncture approach breakdown
+  raqui_puncture: PunctureStats
+  peridural_puncture: PunctureStats
 }
 
 interface RawProc {
   type: string
   attempts: number | null
   patient_position: string | null
+  puncture_approach: string | null
   surgery_id: string
 }
 
@@ -101,12 +110,14 @@ export async function getNeuroaxialData(
     sentado: 0, decubito: 0,
     sentado_avg_attempts: null, decubito_avg_attempts: null,
   }
+  const emptyPuncture: PunctureStats = { mediana: 0, paramediana: 0 }
   const empty: NeuroaxialData = {
     raqui_total: 0, raqui_avg_attempts: null, raqui_first_rate: null,
     peridural_total: 0, peridural_avg_attempts: null, peridural_first_rate: null,
     monthly: [], distribution: [],
     raqui_position: emptyPos, peridural_position: emptyPos,
     position_vs_attempts: [],
+    raqui_puncture: emptyPuncture, peridural_puncture: emptyPuncture,
   }
 
   // Fetch surgeries in range for date mapping
@@ -126,7 +137,7 @@ export async function getNeuroaxialData(
   // Fetch neuroaxial procedures
   const { data: procsRaw } = await supabase
     .from('procedures')
-    .select('type, attempts, patient_position, surgery_id')
+    .select('type, attempts, patient_position, puncture_approach, surgery_id')
     .in('surgery_id', surgIds)
     .in('type', ['raquidiana', 'peridural'])
 
@@ -174,6 +185,16 @@ export async function getNeuroaxialData(
   const raquiPos    = positionStats(raquiProcs)
   const periduralPos = positionStats(periduralProcs)
 
+  // Puncture approach stats
+  const raquiPuncture: PunctureStats = {
+    mediana:     raquiProcs.filter((p) => p.puncture_approach === 'mediana').length,
+    paramediana: raquiProcs.filter((p) => p.puncture_approach === 'paramediana').length,
+  }
+  const periduralPuncture: PunctureStats = {
+    mediana:     periduralProcs.filter((p) => p.puncture_approach === 'mediana').length,
+    paramediana: periduralProcs.filter((p) => p.puncture_approach === 'paramediana').length,
+  }
+
   // Position vs attempts cross chart
   // Sentado: avg attempts for raqui and peridural done in sentado position
   // Decúbito: same for decúbito lateral
@@ -202,5 +223,7 @@ export async function getNeuroaxialData(
     raqui_position:         raquiPos,
     peridural_position:     periduralPos,
     position_vs_attempts,
+    raqui_puncture:         raquiPuncture,
+    peridural_puncture:     periduralPuncture,
   }
 }
