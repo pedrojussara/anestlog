@@ -97,6 +97,90 @@ export async function saveSurgery(input: SurgeryInput) {
   redirect('/dashboard')
 }
 
+export async function updateSurgery(surgeryId: string, input: SurgeryInput) {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autenticado.' }
+
+  if (!input.date) return { error: 'Data obrigatória.' }
+  if (!input.specialty) return { error: 'Especialidade obrigatória.' }
+  if (input.anesthesia_types.length === 0) return { error: 'Selecione ao menos um tipo de anestesia.' }
+  if (input.procedures.length === 0) return { error: 'Adicione ao menos um procedimento.' }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any
+
+  // Verifica que a cirurgia pertence ao usuário
+  const { data: existing } = await db
+    .from('surgeries')
+    .select('id')
+    .eq('id', surgeryId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (!existing) return { error: 'Cirurgia não encontrada.' }
+
+  // 1. Atualiza a cirurgia
+  const { error: surgeryError } = await db
+    .from('surgeries')
+    .update({
+      date: input.date,
+      specialty: input.specialty,
+      surgery_name: input.surgery_name || null,
+      anesthesia_types: input.anesthesia_types,
+      notes: input.notes || null,
+    })
+    .eq('id', surgeryId)
+
+  if (surgeryError) return { error: 'Erro ao atualizar cirurgia.' }
+
+  // 2. Remove procedimentos antigos (nerve_blocks são deletados por CASCADE)
+  const { error: deleteError } = await db
+    .from('procedures')
+    .delete()
+    .eq('surgery_id', surgeryId)
+
+  if (deleteError) return { error: 'Erro ao atualizar procedimentos.' }
+
+  // 3. Reinsere os procedimentos
+  for (const proc of input.procedures) {
+    const { data: procedure, error: procError } = await db
+      .from('procedures')
+      .insert({
+        surgery_id: surgeryId,
+        type: proc.type,
+        status: proc.status,
+        is_difficult_airway: proc.is_difficult_airway,
+        notes: proc.notes || null,
+        attempts:          proc.attempts ?? null,
+        patient_position:  proc.patient_position || null,
+        puncture_approach: proc.puncture_approach || null,
+        armored_tube:      proc.armored_tube ?? false,
+        guide_wire:        proc.guide_wire ?? false,
+      })
+      .select('id')
+      .single()
+
+    if (procError) return { error: 'Erro ao salvar procedimento.' }
+
+    if (proc.type === 'bloqueio_periferico' && proc.nerve_block_type) {
+      const { error: blockError } = await db.from('nerve_blocks').insert({
+        procedure_id: procedure.id,
+        block_type: proc.nerve_block_type,
+        postop_pain_level: proc.nerve_block_pain ?? null,
+      })
+      if (blockError) return { error: 'Erro ao salvar bloqueio.' }
+    }
+  }
+
+  revalidatePath('/dashboard')
+  revalidatePath('/dashboard/cirurgias')
+  redirect('/dashboard/cirurgias')
+}
+
 export async function deleteSurgery(surgeryId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
