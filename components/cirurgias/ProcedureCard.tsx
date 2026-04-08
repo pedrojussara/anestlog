@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { Trash2, ChevronDown, CheckCircle2, XCircle, Wind, Activity } from 'lucide-react'
 import { PROCEDURE_TYPES, NERVE_BLOCK_GROUPS, INTUBATION_TYPES, type ProcedureTypeValue } from '@/lib/constants'
 import type { ProcedureInput } from '@/app/actions/surgeries'
@@ -26,6 +27,16 @@ export default function ProcedureCard({ index, procedure, onChange, onRemove, ca
   const isNerveBlock  = procedure.type === 'bloqueio_periferico'
   const isNeuroaxial  = procedure.type === 'raquidiana' || procedure.type === 'peridural'
 
+  // Estado intermediário em string para permitir apagar e redigitar livremente
+  const [attemptsInput, setAttemptsInput] = useState(
+    procedure.attempts != null ? String(procedure.attempts) : ''
+  )
+
+  // Sincroniza se o procedimento mudar externamente (ex: troca de tipo)
+  useEffect(() => {
+    setAttemptsInput(procedure.attempts != null ? String(procedure.attempts) : '')
+  }, [procedure.type])
+
   function set<K extends keyof ProcedureInput>(key: K, value: ProcedureInput[K]) {
     onChange({ ...procedure, [key]: value })
   }
@@ -40,6 +51,17 @@ export default function ProcedureCard({ index, procedure, onChange, onRemove, ca
       nerve_block_type: undefined,
       nerve_block_pain: null,
     })
+  }
+
+  function handleAttemptsChange(raw: string) {
+    // Permite campo vazio (usuário apagou tudo)
+    setAttemptsInput(raw)
+    if (raw === '') {
+      set('attempts', null)
+      return
+    }
+    const n = parseInt(raw, 10)
+    if (!isNaN(n) && n >= 1) set('attempts', n)
   }
 
   return (
@@ -159,13 +181,11 @@ export default function ProcedureCard({ index, procedure, onChange, onRemove, ca
               <input
                 type="number"
                 min={1}
-                value={procedure.attempts ?? 1}
-                onChange={(e) => {
-                  const n = parseInt(e.target.value, 10)
-                  set('attempts', isNaN(n) || n < 1 ? 1 : n)
-                }}
+                value={attemptsInput}
+                onChange={(e) => handleAttemptsChange(e.target.value)}
+                placeholder="Ex: 1"
                 className="w-full rounded-lg border border-gray-600 bg-gray-900 px-4 py-2.5
-                           text-sm text-slate-100 outline-none
+                           text-sm text-slate-100 placeholder:text-slate-600 outline-none
                            focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
               />
             </div>
