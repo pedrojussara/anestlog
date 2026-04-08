@@ -1,7 +1,8 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import {
-  Activity, Stethoscope, CheckCircle2, XCircle, Wind,
+  Activity, Stethoscope, CheckCircle2, XCircle, Wind, PlusCircle,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getDashboardStats, getFilterOptions, type FilterPeriod } from '@/lib/dashboard'
@@ -80,14 +81,25 @@ export default async function DashboardPage({ searchParams }: Props) {
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
-      <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-bold text-slate-100">
-          Olá, {profile?.name?.split(' ')[0] ?? 'Residente'} 👋
-        </h1>
-        <p className="text-sm text-slate-500">
-          {profile?.residency_year ? `R${profile.residency_year} — ` : ''}
-          Aqui está um resumo da sua evolução
-        </p>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-xl font-bold text-slate-100">
+            Olá, {profile?.name?.split(' ')[0] ?? 'Residente'} 👋
+          </h1>
+          <p className="text-sm text-slate-500">
+            {profile?.residency_year ? `R${profile.residency_year} — ` : ''}
+            Aqui está um resumo da sua evolução
+          </p>
+        </div>
+        <Link
+          href="/dashboard/cirurgias/nova"
+          className="flex items-center gap-2 rounded-lg bg-cyan-500 px-4 py-2.5
+                     text-sm font-semibold text-gray-900 hover:bg-cyan-400 transition-colors shrink-0"
+        >
+          <PlusCircle size={15} />
+          <span className="hidden sm:inline">Nova Cirurgia</span>
+          <span className="sm:hidden">Nova</span>
+        </Link>
       </div>
 
       {/* Filtros */}

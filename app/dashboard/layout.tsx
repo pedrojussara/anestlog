@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import {
-  Activity, LayoutDashboard, Stethoscope, LogOut, PlusCircle,
+  Activity, LayoutDashboard, Stethoscope, LogOut,
   BarChart2, Zap, XCircle, Users, UserCircle, Target,
 } from 'lucide-react'
 import { logout } from '@/app/actions/auth'
@@ -46,18 +46,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </Link>
           ))}
         </nav>
-
-        {/* Nova cirurgia CTA */}
-        <div className="px-3 pb-2">
-          <Link
-            href="/dashboard/cirurgias/nova"
-            className="flex items-center justify-center gap-2 w-full rounded-lg bg-cyan-500 px-3 py-2.5
-                       text-sm font-semibold text-gray-900 hover:bg-cyan-400 transition-colors"
-          >
-            <PlusCircle size={15} />
-            Nova Cirurgia
-          </Link>
-        </div>
 
         {/* Logout */}
         <div className="p-3 border-t border-gray-800">
