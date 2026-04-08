@@ -2,7 +2,7 @@
 
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import type { IntubationStats } from '@/lib/analytics'
-import { Wind, CheckCircle2, XCircle, Activity } from 'lucide-react'
+import { Wind, CheckCircle2, XCircle, Activity, Zap, GitBranch } from 'lucide-react'
 
 interface Props { data: IntubationStats }
 
@@ -36,13 +36,22 @@ export default function IntubationSection({ data }: Props) {
     { name: 'Falha',   value: data.failureCount, color: '#ef4444' },
   ]
 
-  const difficultyRate = data.total > 0
-    ? Math.round((data.difficult / data.total) * 100)
-    : 0
+  const difficultyRate  = data.total > 0 ? Math.round((data.difficult    / data.total) * 100) : 0
+  const armoredRate     = data.total > 0 ? Math.round((data.armoredTube  / data.total) * 100) : 0
+  const guideWireRate   = data.total > 0 ? Math.round((data.guideWire    / data.total) * 100) : 0
+
+  const armoredData = [
+    { name: 'Com Tubo Aramado', value: data.armoredTube,            color: '#22d3ee' },
+    { name: 'Sem Tubo Aramado', value: data.total - data.armoredTube, color: '#1e3a4a' },
+  ]
+  const guideWireData = [
+    { name: 'Com Bougie',  value: data.guideWire,            color: '#a78bfa' },
+    { name: 'Sem Bougie',  value: data.total - data.guideWire, color: '#2d1f4a' },
+  ]
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Stat cards */}
+      {/* Stat cards — linha 1 */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <MiniStat
           label="Total de intubações"
@@ -74,7 +83,25 @@ export default function IntubationSection({ data }: Props) {
         />
       </div>
 
-      {/* Dois donuts lado a lado */}
+      {/* Stat cards — linha 2: dispositivos auxiliares */}
+      <div className="grid grid-cols-2 gap-3">
+        <MiniStat
+          label={`Tubo Aramado (${armoredRate}% das intubações)`}
+          value={data.armoredTube}
+          icon={<Zap size={15} />}
+          color="text-cyan-400"
+          bg="bg-cyan-500/10"
+        />
+        <MiniStat
+          label={`Fio Guia / Bougie (${guideWireRate}% das intubações)`}
+          value={data.guideWire}
+          icon={<GitBranch size={15} />}
+          color="text-violet-400"
+          bg="bg-violet-500/10"
+        />
+      </div>
+
+      {/* Donuts: dificuldade + sucesso */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <DonutPanel
           title="Via Aérea Difícil vs Normal"
@@ -89,6 +116,24 @@ export default function IntubationSection({ data }: Props) {
           centerSub="sucesso"
         />
       </div>
+
+      {/* Donuts: dispositivos auxiliares (só se há ao menos um registro) */}
+      {(data.armoredTube > 0 || data.guideWire > 0) && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <DonutPanel
+            title="Uso de Tubo Aramado"
+            data={armoredData}
+            centerLabel={`${armoredRate}%`}
+            centerSub="aramado"
+          />
+          <DonutPanel
+            title="Uso de Fio Guia / Bougie"
+            data={guideWireData}
+            centerLabel={`${guideWireRate}%`}
+            centerSub="bougie"
+          />
+        </div>
+      )}
     </div>
   )
 }

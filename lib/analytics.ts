@@ -38,6 +38,8 @@ interface ProcedureAnalyticsRow {
   type: string
   status: 'success' | 'failure'
   is_difficult_airway: boolean
+  armored_tube: boolean
+  guide_wire: boolean
 }
 
 // ── Return types ─────────────────────────────────────────────
@@ -71,6 +73,8 @@ export interface IntubationStats {
   successCount: number
   failureCount: number
   successRate: number
+  armoredTube: number
+  guideWire: number
 }
 
 export interface AnalyticsData {
@@ -101,7 +105,7 @@ export async function getAnalyticsData(
       .order('date', { ascending: true }),
     supabase
       .from('procedures')
-      .select('id, surgery_id, type, status, is_difficult_airway')
+      .select('id, surgery_id, type, status, is_difficult_airway, armored_tube, guide_wire')
       .in(
         'surgery_id',
         // sub-query not available — we'll filter after
@@ -186,7 +190,9 @@ export async function getAnalyticsData(
 
   // ── 5. Intubation stats ──────────────────────────────────
   const intubationProcs = procedures.filter(
-    (p) => p.type === 'intubacao_orotraqueal' || p.type === 'intubacao_nasotraqueal'
+    (p) => p.type === 'intubacao_orotraqueal' ||
+           p.type === 'intubacao_nasotraqueal' ||
+           p.type === 'intubacao_acordado'
   )
   const difficult   = intubationProcs.filter((p) => p.is_difficult_airway).length
   const intSuccess  = intubationProcs.filter((p) => p.status === 'success').length
@@ -198,6 +204,8 @@ export async function getAnalyticsData(
     successCount: intSuccess,
     failureCount: intTotal - intSuccess,
     successRate: intTotal > 0 ? Math.round((intSuccess / intTotal) * 100) : 0,
+    armoredTube: intubationProcs.filter((p) => p.armored_tube).length,
+    guideWire:   intubationProcs.filter((p) => p.guide_wire).length,
   }
 
   return {

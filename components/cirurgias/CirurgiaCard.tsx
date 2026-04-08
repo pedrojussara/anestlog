@@ -103,6 +103,12 @@ export default function CirurgiaCard({ surgery }: Props) {
                     {proc.puncture_approach === 'paramediana' && ' · Paramediana'}
                   </span>
                 )}
+                {(proc.type === 'intubacao_orotraqueal' || proc.type === 'intubacao_nasotraqueal' || proc.type === 'intubacao_acordado') && (
+                  <span className="ml-1 text-slate-500">
+                    {proc.armored_tube && ' · Tubo Aramado'}
+                    {proc.guide_wire && ' · Bougie'}
+                  </span>
+                )}
               </span>
               {proc.type === 'bloqueio_periferico' && (
                 <Activity size={11} className="flex-shrink-0 text-violet-400" />

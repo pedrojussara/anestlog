@@ -13,6 +13,8 @@ export interface ProcedureInput {
   attempts?: number | null           // raquidiana e peridural
   patient_position?: string | null   // 'sentado' | 'decubito_lateral'
   puncture_approach?: string | null  // 'mediana' | 'paramediana'
+  armored_tube?: boolean             // intubação: tubo aramado
+  guide_wire?: boolean               // intubação: fio guia / bougie
   nerve_block_type?: string
   nerve_block_pain?: number | null
 }
@@ -71,6 +73,8 @@ export async function saveSurgery(input: SurgeryInput) {
         attempts:          proc.attempts ?? null,
         patient_position:  proc.patient_position || null,
         puncture_approach: proc.puncture_approach || null,
+        armored_tube:      proc.armored_tube ?? false,
+        guide_wire:        proc.guide_wire ?? false,
       })
       .select('id')
       .single()

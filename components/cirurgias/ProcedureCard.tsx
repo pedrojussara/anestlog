@@ -49,6 +49,8 @@ export default function ProcedureCard({ index, procedure, onChange, onRemove, ca
       attempts: null,
       patient_position: null,
       puncture_approach: null,
+      armored_tube: false,
+      guide_wire: false,
       nerve_block_type: undefined,
       nerve_block_pain: null,
     })
@@ -218,40 +220,102 @@ export default function ProcedureCard({ index, procedure, onChange, onRemove, ca
           </div>
         )}
 
-        {/* Via aérea difícil (só se intubação) */}
+        {/* Campos extras de intubação */}
         {isIntubation && (
-          <button
-            type="button"
-            onClick={() => set('is_difficult_airway', !procedure.is_difficult_airway)}
-            className={[
-              'flex items-center gap-3 rounded-lg border p-3 text-left transition-all',
-              procedure.is_difficult_airway
-                ? 'border-orange-500/40 bg-orange-500/10'
-                : 'border-gray-600 bg-gray-900 hover:border-gray-500',
-            ].join(' ')}
-          >
-            {/* Checkbox visual */}
-            <span
+          <div className="flex flex-col gap-2">
+            {/* Via aérea difícil */}
+            <button
+              type="button"
+              onClick={() => set('is_difficult_airway', !procedure.is_difficult_airway)}
               className={[
-                'flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border transition-colors',
+                'flex items-center gap-3 rounded-lg border p-3 text-left transition-all',
                 procedure.is_difficult_airway
-                  ? 'border-orange-500 bg-orange-500'
-                  : 'border-gray-600 bg-gray-800',
+                  ? 'border-orange-500/40 bg-orange-500/10'
+                  : 'border-gray-600 bg-gray-900 hover:border-gray-500',
               ].join(' ')}
             >
-              {procedure.is_difficult_airway && (
-                <svg viewBox="0 0 10 8" className="h-2.5 w-2.5 fill-white">
-                  <path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              )}
-            </span>
-            <div className="flex items-center gap-2">
-              <Wind size={14} className={procedure.is_difficult_airway ? 'text-orange-400' : 'text-slate-500'} />
-              <span className={`text-sm font-medium ${procedure.is_difficult_airway ? 'text-orange-300' : 'text-slate-400'}`}>
-                Via aérea difícil
+              <span
+                className={[
+                  'flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border transition-colors',
+                  procedure.is_difficult_airway
+                    ? 'border-orange-500 bg-orange-500'
+                    : 'border-gray-600 bg-gray-800',
+                ].join(' ')}
+              >
+                {procedure.is_difficult_airway && (
+                  <svg viewBox="0 0 10 8" className="h-2.5 w-2.5 fill-white">
+                    <path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
               </span>
-            </div>
-          </button>
+              <div className="flex items-center gap-2">
+                <Wind size={14} className={procedure.is_difficult_airway ? 'text-orange-400' : 'text-slate-500'} />
+                <span className={`text-sm font-medium ${procedure.is_difficult_airway ? 'text-orange-300' : 'text-slate-400'}`}>
+                  Via aérea difícil
+                </span>
+              </div>
+            </button>
+
+            {/* Tubo aramado */}
+            <button
+              type="button"
+              onClick={() => set('armored_tube', !procedure.armored_tube)}
+              className={[
+                'flex items-center gap-3 rounded-lg border p-3 text-left transition-all',
+                procedure.armored_tube
+                  ? 'border-cyan-500/40 bg-cyan-500/10'
+                  : 'border-gray-600 bg-gray-900 hover:border-gray-500',
+              ].join(' ')}
+            >
+              <span
+                className={[
+                  'flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border transition-colors',
+                  procedure.armored_tube
+                    ? 'border-cyan-500 bg-cyan-500'
+                    : 'border-gray-600 bg-gray-800',
+                ].join(' ')}
+              >
+                {procedure.armored_tube && (
+                  <svg viewBox="0 0 10 8" className="h-2.5 w-2.5 fill-white">
+                    <path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </span>
+              <span className={`text-sm font-medium ${procedure.armored_tube ? 'text-cyan-300' : 'text-slate-400'}`}>
+                Tubo Aramado
+              </span>
+            </button>
+
+            {/* Fio guia / Bougie */}
+            <button
+              type="button"
+              onClick={() => set('guide_wire', !procedure.guide_wire)}
+              className={[
+                'flex items-center gap-3 rounded-lg border p-3 text-left transition-all',
+                procedure.guide_wire
+                  ? 'border-violet-500/40 bg-violet-500/10'
+                  : 'border-gray-600 bg-gray-900 hover:border-gray-500',
+              ].join(' ')}
+            >
+              <span
+                className={[
+                  'flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border transition-colors',
+                  procedure.guide_wire
+                    ? 'border-violet-500 bg-violet-500'
+                    : 'border-gray-600 bg-gray-800',
+                ].join(' ')}
+              >
+                {procedure.guide_wire && (
+                  <svg viewBox="0 0 10 8" className="h-2.5 w-2.5 fill-white">
+                    <path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </span>
+              <span className={`text-sm font-medium ${procedure.guide_wire ? 'text-violet-300' : 'text-slate-400'}`}>
+                Uso de Fio Guia / Bougie
+              </span>
+            </button>
+          </div>
         )}
 
         {/* Bloqueio periférico */}

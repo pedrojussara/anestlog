@@ -13,6 +13,8 @@ export interface ProcedureRow {
   attempts: number | null
   patient_position: string | null
   puncture_approach: string | null
+  armored_tube: boolean
+  guide_wire: boolean
 }
 
 export interface SurgeryRow {
@@ -57,7 +59,7 @@ export async function getSurgeries(
 
   let query = supabase
     .from('surgeries')
-    .select('id, date, specialty, surgery_name, anesthesia_types, notes, created_at, procedures(id, type, status, is_difficult_airway, notes, attempts, patient_position, puncture_approach)', { count: 'exact' })
+    .select('id, date, specialty, surgery_name, anesthesia_types, notes, created_at, procedures(id, type, status, is_difficult_airway, notes, attempts, patient_position, puncture_approach, armored_tube, guide_wire)', { count: 'exact' })
     .eq('user_id', userId)
     .order('date', { ascending: false })
     .range(from, to)

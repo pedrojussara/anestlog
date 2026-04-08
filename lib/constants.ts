@@ -21,6 +21,7 @@ export const PROCEDURE_TYPES = [
   { value: 'nenhum',                 label: 'Nenhum',                   group: 'Geral' },
   { value: 'intubacao_orotraqueal',  label: 'Intubação Orotraqueal',    group: 'Via Aérea' },
   { value: 'intubacao_nasotraqueal', label: 'Intubação Nasotraqueal',   group: 'Via Aérea' },
+  { value: 'intubacao_acordado',     label: 'Intubação Acordado',       group: 'Via Aérea' },
   { value: 'mascara_laringea',       label: 'Máscara Laríngea',         group: 'Via Aérea' },
   { value: 'raquidiana',             label: 'Raquianestesia',            group: 'Neuroeixo' },
   { value: 'peridural',              label: 'Peridural',                 group: 'Neuroeixo' },
@@ -36,6 +37,7 @@ export type ProcedureTypeValue = typeof PROCEDURE_TYPES[number]['value']
 export const INTUBATION_TYPES: ProcedureTypeValue[] = [
   'intubacao_orotraqueal',
   'intubacao_nasotraqueal',
+  'intubacao_acordado',
 ]
 
 export const NERVE_BLOCK_GROUPS = [
