@@ -6,7 +6,6 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-  ],
+  // Roda apenas nas rotas protegidas — não em páginas públicas, API routes ou assets estáticos.
+  matcher: ['/dashboard/:path*'],
 }
