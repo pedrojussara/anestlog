@@ -1,6 +1,5 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { Trash2, ChevronDown, CheckCircle2, XCircle, Wind, Activity } from 'lucide-react'
 import { PROCEDURE_TYPES, NERVE_BLOCK_GROUPS, INTUBATION_TYPES, type ProcedureTypeValue } from '@/lib/constants'
 import type { ProcedureInput } from '@/app/actions/surgeries'
@@ -27,16 +26,6 @@ export default function ProcedureCard({ index, procedure, onChange, onRemove, ca
   const isNerveBlock  = procedure.type === 'bloqueio_periferico'
   const isNeuroaxial  = procedure.type === 'raquidiana' || procedure.type === 'peridural'
 
-  // Estado intermediário em string para permitir apagar e redigitar livremente
-  const [attemptsInput, setAttemptsInput] = useState(
-    procedure.attempts != null ? String(procedure.attempts) : ''
-  )
-
-  // Sincroniza se o procedimento mudar externamente (ex: troca de tipo)
-  useEffect(() => {
-    setAttemptsInput(procedure.attempts != null ? String(procedure.attempts) : '')
-  }, [procedure.type])
-
   function set<K extends keyof ProcedureInput>(key: K, value: ProcedureInput[K]) {
     onChange({ ...procedure, [key]: value })
   }
@@ -46,7 +35,8 @@ export default function ProcedureCard({ index, procedure, onChange, onRemove, ca
       ...procedure,
       type,
       is_difficult_airway: false,
-      attempts: null,
+      first_attempt_success: null,
+      needle_redirection: null,
       patient_position: null,
       puncture_approach: null,
       armored_tube: false,
@@ -54,17 +44,6 @@ export default function ProcedureCard({ index, procedure, onChange, onRemove, ca
       nerve_block_type: undefined,
       nerve_block_pain: null,
     })
-  }
-
-  function handleAttemptsChange(raw: string) {
-    // Permite campo vazio (usuário apagou tudo)
-    setAttemptsInput(raw)
-    if (raw === '') {
-      set('attempts', null)
-      return
-    }
-    const n = parseInt(raw, 10)
-    if (!isNaN(n) && n >= 1) set('attempts', n)
   }
 
   return (
@@ -203,19 +182,58 @@ export default function ProcedureCard({ index, procedure, onChange, onRemove, ca
               </div>
             </div>
 
-            {/* Número de tentativas */}
+            {/* Sucesso na primeira tentativa */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-slate-400">Número de tentativas</label>
-              <input
-                type="number"
-                min={1}
-                value={attemptsInput}
-                onChange={(e) => handleAttemptsChange(e.target.value)}
-                placeholder="Ex: 1"
-                className="w-full rounded-lg border border-gray-600 bg-gray-900 px-4 py-2.5
-                           text-sm text-slate-100 placeholder:text-slate-600 outline-none
-                           focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
-              />
+              <label className="text-xs font-medium text-slate-400">
+                Sucesso na primeira tentativa? <span className="text-slate-600">(opcional)</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  { value: true,  label: 'Sim' },
+                  { value: false, label: 'Não' },
+                ] as const).map((opt) => (
+                  <button
+                    key={String(opt.value)}
+                    type="button"
+                    onClick={() => set('first_attempt_success', procedure.first_attempt_success === opt.value ? null : opt.value)}
+                    className={[
+                      'rounded-lg border py-2.5 text-sm font-medium transition-all',
+                      procedure.first_attempt_success === opt.value
+                        ? 'border-cyan-500/50 bg-cyan-500/15 text-cyan-400'
+                        : 'border-gray-600 bg-gray-900 text-slate-500 hover:border-gray-500 hover:text-slate-300',
+                    ].join(' ')}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Redirecionamento de agulha */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-slate-400">
+                Necessidade de redirecionamento da agulha? <span className="text-slate-600">(opcional)</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  { value: true,  label: 'Sim' },
+                  { value: false, label: 'Não' },
+                ] as const).map((opt) => (
+                  <button
+                    key={String(opt.value)}
+                    type="button"
+                    onClick={() => set('needle_redirection', procedure.needle_redirection === opt.value ? null : opt.value)}
+                    className={[
+                      'rounded-lg border py-2.5 text-sm font-medium transition-all',
+                      procedure.needle_redirection === opt.value
+                        ? 'border-cyan-500/50 bg-cyan-500/15 text-cyan-400'
+                        : 'border-gray-600 bg-gray-900 text-slate-500 hover:border-gray-500 hover:text-slate-300',
+                    ].join(' ')}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}

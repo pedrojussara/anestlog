@@ -10,7 +10,8 @@ export interface ProcedureInput {
   status: 'success' | 'failure'
   is_difficult_airway: boolean
   notes: string
-  attempts?: number | null           // raquidiana e peridural
+  first_attempt_success?: boolean | null  // raquidiana e peridural
+  needle_redirection?: boolean | null     // raquidiana e peridural
   patient_position?: string | null   // 'sentado' | 'decubito_lateral'
   puncture_approach?: string | null  // 'mediana' | 'paramediana'
   armored_tube?: boolean             // intubação: tubo aramado
@@ -69,7 +70,8 @@ export async function saveSurgery(input: SurgeryInput) {
         status: proc.status,
         is_difficult_airway: proc.is_difficult_airway,
         notes: proc.notes || null,
-        attempts:          proc.attempts ?? null,
+        first_attempt_success: proc.first_attempt_success ?? null,
+        needle_redirection:    proc.needle_redirection ?? null,
         patient_position:  proc.patient_position || null,
         puncture_approach: proc.puncture_approach || null,
         armored_tube:      proc.armored_tube ?? false,
@@ -153,7 +155,8 @@ export async function updateSurgery(surgeryId: string, input: SurgeryInput) {
         status: proc.status,
         is_difficult_airway: proc.is_difficult_airway,
         notes: proc.notes || null,
-        attempts:          proc.attempts ?? null,
+        first_attempt_success: proc.first_attempt_success ?? null,
+        needle_redirection:    proc.needle_redirection ?? null,
         patient_position:  proc.patient_position || null,
         puncture_approach: proc.puncture_approach || null,
         armored_tube:      proc.armored_tube ?? false,

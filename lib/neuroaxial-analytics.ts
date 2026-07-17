@@ -8,34 +8,15 @@ export interface DateRange {
 
 export interface NeuroaxialMonthly {
   month: string
-  raqui_avg: number | null
-  peridural_avg: number | null
   raqui_first_rate: number | null
   peridural_first_rate: number | null
-}
-
-export interface AttemptsDistEntry {
-  label: string   // "1", "2", "3+"
-  raqui: number
-  peridural: number
-}
-
-export interface PositionDistEntry {
-  position: string  // "Sentado" | "Decúbito Lateral"
-  value: number
+  raqui_redirection_rate: number | null
+  peridural_redirection_rate: number | null
 }
 
 export interface PositionStats {
   sentado: number
   decubito: number
-  sentado_avg_attempts: number | null
-  decubito_avg_attempts: number | null
-}
-
-export interface PosVsAttemptsEntry {
-  position: string
-  raqui_avg: number | null
-  peridural_avg: number | null
 }
 
 export interface PunctureStats {
@@ -43,23 +24,26 @@ export interface PunctureStats {
   paramediana: number
 }
 
+export interface RedirectionCounts {
+  yes: number
+  no: number
+}
+
 export interface NeuroaxialData {
   // Summaries
   raqui_total: number
-  raqui_avg_attempts: number | null
   raqui_first_rate: number | null
+  raqui_redirection_rate: number | null
+  raqui_redirection_counts: RedirectionCounts
   peridural_total: number
-  peridural_avg_attempts: number | null
   peridural_first_rate: number | null
+  peridural_redirection_rate: number | null
+  peridural_redirection_counts: RedirectionCounts
   // Monthly trend
   monthly: NeuroaxialMonthly[]
-  // Attempts distribution
-  distribution: AttemptsDistEntry[]
   // Position breakdown
   raqui_position: PositionStats
   peridural_position: PositionStats
-  // Position vs attempts (for cross chart)
-  position_vs_attempts: PosVsAttemptsEntry[]
   // Puncture approach breakdown
   raqui_puncture: PunctureStats
   peridural_puncture: PunctureStats
@@ -67,20 +51,16 @@ export interface NeuroaxialData {
 
 interface RawProc {
   type: string
-  attempts: number | null
+  first_attempt_success: boolean | null
+  needle_redirection: boolean | null
   patient_position: string | null
   puncture_approach: string | null
   surgery_id: string
 }
 
-function avg(values: number[]): number | null {
+function rate(values: boolean[]): number | null {
   if (values.length === 0) return null
-  return Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 10) / 10
-}
-
-function firstRate(values: number[]): number | null {
-  if (values.length === 0) return null
-  return Math.round((values.filter((v) => v === 1).length / values.length) * 100)
+  return Math.round((values.filter(Boolean).length / values.length) * 100)
 }
 
 function monthLabel(yyyymm: string): string {
@@ -91,13 +71,9 @@ function monthLabel(yyyymm: string): string {
 }
 
 function positionStats(procs: RawProc[]): PositionStats {
-  const sentadoProcs  = procs.filter((p) => p.patient_position === 'sentado')
-  const decubitoProcs = procs.filter((p) => p.patient_position === 'decubito_lateral')
   return {
-    sentado:               sentadoProcs.length,
-    decubito:              decubitoProcs.length,
-    sentado_avg_attempts:  avg(sentadoProcs.map((p) => p.attempts ?? 1)),
-    decubito_avg_attempts: avg(decubitoProcs.map((p) => p.attempts ?? 1)),
+    sentado:  procs.filter((p) => p.patient_position === 'sentado').length,
+    decubito: procs.filter((p) => p.patient_position === 'decubito_lateral').length,
   }
 }
 
@@ -106,17 +82,14 @@ export async function getNeuroaxialData(
   userId: string,
   range: DateRange,
 ): Promise<NeuroaxialData> {
-  const emptyPos: PositionStats = {
-    sentado: 0, decubito: 0,
-    sentado_avg_attempts: null, decubito_avg_attempts: null,
-  }
+  const emptyPos: PositionStats = { sentado: 0, decubito: 0 }
   const emptyPuncture: PunctureStats = { mediana: 0, paramediana: 0 }
+  const emptyRedir: RedirectionCounts = { yes: 0, no: 0 }
   const empty: NeuroaxialData = {
-    raqui_total: 0, raqui_avg_attempts: null, raqui_first_rate: null,
-    peridural_total: 0, peridural_avg_attempts: null, peridural_first_rate: null,
-    monthly: [], distribution: [],
+    raqui_total: 0, raqui_first_rate: null, raqui_redirection_rate: null, raqui_redirection_counts: emptyRedir,
+    peridural_total: 0, peridural_first_rate: null, peridural_redirection_rate: null, peridural_redirection_counts: emptyRedir,
+    monthly: [],
     raqui_position: emptyPos, peridural_position: emptyPos,
-    position_vs_attempts: [],
     raqui_puncture: emptyPuncture, peridural_puncture: emptyPuncture,
   }
 
@@ -137,52 +110,56 @@ export async function getNeuroaxialData(
   // Fetch neuroaxial procedures
   const { data: procsRaw } = await supabase
     .from('procedures')
-    .select('type, attempts, patient_position, puncture_approach, surgery_id')
+    .select('type, first_attempt_success, needle_redirection, patient_position, puncture_approach, surgery_id')
     .in('surgery_id', surgIds)
     .in('type', ['raquidiana', 'peridural'])
 
   const procs: RawProc[] = procsRaw ?? []
   if (procs.length === 0) return empty
 
-  const raquiProcs    = procs.filter((p) => p.type === 'raquidiana')
+  const raquiProcs     = procs.filter((p) => p.type === 'raquidiana')
   const periduralProcs = procs.filter((p) => p.type === 'peridural')
 
-  const raquiAttempts    = raquiProcs.map((p) => p.attempts ?? 1)
-  const periduralAttempts = periduralProcs.map((p) => p.attempts ?? 1)
+  const isBool = (v: boolean | null): v is boolean => v != null
+
+  const raquiFirst     = raquiProcs.map((p) => p.first_attempt_success).filter(isBool)
+  const periduralFirst = periduralProcs.map((p) => p.first_attempt_success).filter(isBool)
+  const raquiRedir     = raquiProcs.map((p) => p.needle_redirection).filter(isBool)
+  const periduralRedir = periduralProcs.map((p) => p.needle_redirection).filter(isBool)
 
   // Monthly grouping
-  const monthlyMap = new Map<string, { raqui: number[]; peridural: number[] }>()
+  const monthlyMap = new Map<string, {
+    raquiFirst: boolean[]; periduralFirst: boolean[]; raquiRedir: boolean[]; periduralRedir: boolean[]
+  }>()
   for (const proc of procs) {
     const date = dateMap.get(proc.surgery_id)
     if (!date) continue
     const yyyymm = date.slice(0, 7)
-    if (!monthlyMap.has(yyyymm)) monthlyMap.set(yyyymm, { raqui: [], peridural: [] })
+    if (!monthlyMap.has(yyyymm)) {
+      monthlyMap.set(yyyymm, { raquiFirst: [], periduralFirst: [], raquiRedir: [], periduralRedir: [] })
+    }
     const entry = monthlyMap.get(yyyymm)!
-    const a = proc.attempts ?? 1
-    if (proc.type === 'raquidiana') entry.raqui.push(a)
-    else entry.peridural.push(a)
+    if (proc.type === 'raquidiana') {
+      if (proc.first_attempt_success != null) entry.raquiFirst.push(proc.first_attempt_success)
+      if (proc.needle_redirection != null) entry.raquiRedir.push(proc.needle_redirection)
+    } else {
+      if (proc.first_attempt_success != null) entry.periduralFirst.push(proc.first_attempt_success)
+      if (proc.needle_redirection != null) entry.periduralRedir.push(proc.needle_redirection)
+    }
   }
 
   const monthly: NeuroaxialMonthly[] = Array.from(monthlyMap.entries())
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([yyyymm, { raqui, peridural }]) => ({
-      month:                monthLabel(yyyymm),
-      raqui_avg:            avg(raqui),
-      peridural_avg:        avg(peridural),
-      raqui_first_rate:     firstRate(raqui),
-      peridural_first_rate: firstRate(peridural),
+    .map(([yyyymm, { raquiFirst: rf, periduralFirst: pf, raquiRedir: rr, periduralRedir: pr }]) => ({
+      month:                      monthLabel(yyyymm),
+      raqui_first_rate:           rate(rf),
+      peridural_first_rate:       rate(pf),
+      raqui_redirection_rate:     rate(rr),
+      peridural_redirection_rate: rate(pr),
     }))
 
-  // Attempts distribution
-  const buckets = ['1', '2', '3+']
-  const distribution: AttemptsDistEntry[] = buckets.map((label) => ({
-    label,
-    raqui:    raquiAttempts.filter((a) => label === '3+' ? a >= 3 : a === Number(label)).length,
-    peridural: periduralAttempts.filter((a) => label === '3+' ? a >= 3 : a === Number(label)).length,
-  }))
-
   // Position stats per type
-  const raquiPos    = positionStats(raquiProcs)
+  const raquiPos     = positionStats(raquiProcs)
   const periduralPos = positionStats(periduralProcs)
 
   // Puncture approach stats
@@ -195,35 +172,22 @@ export async function getNeuroaxialData(
     paramediana: periduralProcs.filter((p) => p.puncture_approach === 'paramediana').length,
   }
 
-  // Position vs attempts cross chart
-  // Sentado: avg attempts for raqui and peridural done in sentado position
-  // Decúbito: same for decúbito lateral
-  const position_vs_attempts: PosVsAttemptsEntry[] = [
-    {
-      position: 'Sentado',
-      raqui_avg:    avg(raquiProcs.filter((p) => p.patient_position === 'sentado').map((p) => p.attempts ?? 1)),
-      peridural_avg: avg(periduralProcs.filter((p) => p.patient_position === 'sentado').map((p) => p.attempts ?? 1)),
-    },
-    {
-      position: 'Decúbito Lateral',
-      raqui_avg:    avg(raquiProcs.filter((p) => p.patient_position === 'decubito_lateral').map((p) => p.attempts ?? 1)),
-      peridural_avg: avg(periduralProcs.filter((p) => p.patient_position === 'decubito_lateral').map((p) => p.attempts ?? 1)),
-    },
-  ]
+  const raquiRedirYes     = raquiRedir.filter(Boolean).length
+  const periduralRedirYes = periduralRedir.filter(Boolean).length
 
   return {
-    raqui_total:            raquiProcs.length,
-    raqui_avg_attempts:     avg(raquiAttempts),
-    raqui_first_rate:       firstRate(raquiAttempts),
-    peridural_total:        periduralProcs.length,
-    peridural_avg_attempts: avg(periduralAttempts),
-    peridural_first_rate:   firstRate(periduralAttempts),
+    raqui_total:                raquiProcs.length,
+    raqui_first_rate:           rate(raquiFirst),
+    raqui_redirection_rate:     rate(raquiRedir),
+    raqui_redirection_counts:   { yes: raquiRedirYes, no: raquiRedir.length - raquiRedirYes },
+    peridural_total:            periduralProcs.length,
+    peridural_first_rate:       rate(periduralFirst),
+    peridural_redirection_rate: rate(periduralRedir),
+    peridural_redirection_counts: { yes: periduralRedirYes, no: periduralRedir.length - periduralRedirYes },
     monthly,
-    distribution,
-    raqui_position:         raquiPos,
-    peridural_position:     periduralPos,
-    position_vs_attempts,
-    raqui_puncture:         raquiPuncture,
-    peridural_puncture:     periduralPuncture,
+    raqui_position:     raquiPos,
+    peridural_position: periduralPos,
+    raqui_puncture:     raquiPuncture,
+    peridural_puncture: periduralPuncture,
   }
 }

@@ -94,9 +94,10 @@ export default function CirurgiaCard({ surgery }: Props) {
                 {getProcedureLabel(proc.type)}
                 {(proc.type === 'raquidiana' || proc.type === 'peridural') && (
                   <span className="ml-1 text-slate-500">
-                    {proc.attempts != null && proc.attempts > 0 && (
-                      <> · {proc.attempts} {proc.attempts === 1 ? 'tentativa' : 'tentativas'}</>
+                    {proc.first_attempt_success != null && (
+                      <> · {proc.first_attempt_success ? 'Sucesso 1ª tentativa' : 'Não foi na 1ª tentativa'}</>
                     )}
+                    {proc.needle_redirection && ' · Redirecionamento de agulha'}
                     {proc.patient_position === 'sentado' && ' · Sentado'}
                     {proc.patient_position === 'decubito_lateral' && ' · Decúbito Lateral'}
                     {proc.puncture_approach === 'mediana' && ' · Mediana'}

@@ -26,7 +26,7 @@ export default async function EditarCirurgiaPage({ params }: Props) {
       id, date, specialty, surgery_name, anesthesia_types, notes,
       procedures (
         id, type, status, is_difficult_airway, notes,
-        attempts, patient_position, puncture_approach, armored_tube, guide_wire,
+        first_attempt_success, needle_redirection, patient_position, puncture_approach, armored_tube, guide_wire,
         nerve_blocks ( block_type, postop_pain_level )
       )
     `)
@@ -47,7 +47,8 @@ export default async function EditarCirurgiaPage({ params }: Props) {
       status: 'success' | 'failure'
       is_difficult_airway: boolean
       notes: string | null
-      attempts: number | null
+      first_attempt_success: boolean | null
+      needle_redirection: boolean | null
       patient_position: string | null
       puncture_approach: string | null
       armored_tube: boolean
@@ -58,7 +59,8 @@ export default async function EditarCirurgiaPage({ params }: Props) {
       status: p.status,
       is_difficult_airway: p.is_difficult_airway,
       notes: p.notes ?? '',
-      attempts: p.attempts,
+      first_attempt_success: p.first_attempt_success,
+      needle_redirection: p.needle_redirection,
       patient_position: p.patient_position,
       puncture_approach: p.puncture_approach,
       armored_tube: p.armored_tube,
