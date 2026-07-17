@@ -158,7 +158,7 @@ export default async function MetasPage() {
 
       <GoalsClient
         goalItems={goalItems}
-        procedureOptions={PROCEDURE_TYPES.filter((p) => p.value !== 'nenhum').map((p) => ({
+        procedureOptions={PROCEDURE_TYPES.map((p) => ({
           value: p.value,
           label: p.label,
         }))}

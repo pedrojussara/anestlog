@@ -63,7 +63,7 @@ export default function EditCirurgiaForm({ surgeryId, initialData }: Props) {
     if (!specialty) { setError('Selecione a especialidade.'); return }
     if (anesthesiaTypes.length === 0) { setError('Selecione ao menos um tipo de anestesia.'); return }
     const invalidProc = procedures.find((p) => !p.type)
-    if (invalidProc) { setError('Selecione o tipo de todos os procedimentos.'); return }
+    if (invalidProc) { setError('Selecione o tipo de todos os procedimentos, ou remova o card.'); return }
 
     startTransition(async () => {
       const result = await updateSurgery(surgeryId, {
@@ -167,6 +167,12 @@ export default function EditCirurgiaForm({ surgeryId, initialData }: Props) {
         </div>
 
         <div className="flex flex-col gap-3 p-5">
+          {procedures.length === 0 && (
+            <p className="text-xs text-slate-600">
+              Nenhum procedimento adicionado. Você pode salvar a cirurgia assim ou adicionar um abaixo.
+            </p>
+          )}
+
           {procedures.map((proc, i) => (
             <ProcedureCard
               key={i}
@@ -174,7 +180,7 @@ export default function EditCirurgiaForm({ surgeryId, initialData }: Props) {
               procedure={proc}
               onChange={(updated) => updateProcedure(i, updated)}
               onRemove={() => removeProcedure(i)}
-              canRemove={procedures.length > 1}
+              canRemove
             />
           ))}
 

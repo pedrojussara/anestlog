@@ -18,7 +18,6 @@ export const SPECIALTIES = [
 ] as const
 
 export const PROCEDURE_TYPES = [
-  { value: 'nenhum',                 label: 'Nenhum',                   group: 'Geral' },
   { value: 'intubacao_orotraqueal',  label: 'Intubação Orotraqueal',    group: 'Via Aérea' },
   { value: 'intubacao_nasotraqueal', label: 'Intubação Nasotraqueal',   group: 'Via Aérea' },
   { value: 'intubacao_acordado',     label: 'Intubação Acordado',       group: 'Via Aérea' },

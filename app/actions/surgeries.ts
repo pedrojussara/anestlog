@@ -39,7 +39,6 @@ export async function saveSurgery(input: SurgeryInput) {
   if (!input.date) return { error: 'Data obrigatória.' }
   if (!input.specialty) return { error: 'Especialidade obrigatória.' }
   if (input.anesthesia_types.length === 0) return { error: 'Selecione ao menos um tipo de anestesia.' }
-  if (input.procedures.length === 0) return { error: 'Adicione ao menos um procedimento.' }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
@@ -108,7 +107,6 @@ export async function updateSurgery(surgeryId: string, input: SurgeryInput) {
   if (!input.date) return { error: 'Data obrigatória.' }
   if (!input.specialty) return { error: 'Especialidade obrigatória.' }
   if (input.anesthesia_types.length === 0) return { error: 'Selecione ao menos um tipo de anestesia.' }
-  if (input.procedures.length === 0) return { error: 'Adicione ao menos um procedimento.' }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
