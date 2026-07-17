@@ -20,6 +20,7 @@ interface GoalItem {
   label: string
   target: number
   done: number
+  doneSuccess: number
   pct: number
   remaining: number
   status: 'done' | 'near' | 'far'
@@ -240,6 +241,7 @@ export default function GoalsClient({ goalItems, procedureOptions }: Props) {
     name:      g.label.length > 22 ? g.label.slice(0, 21) + '…' : g.label,
     Meta:      g.target,
     Realizado: g.done,
+    Sucesso:   g.doneSuccess,
     pct:       g.pct,
   }))
 
@@ -279,11 +281,11 @@ export default function GoalsClient({ goalItems, procedureOptions }: Props) {
             <BarChart2 size={14} className="text-amber-400" />
             <h2 className="text-sm font-semibold text-slate-200">Meta vs Realizado</h2>
           </div>
-          <ResponsiveContainer width="100%" height={Math.max(200, goalItems.length * 44)}>
+          <ResponsiveContainer width="100%" height={Math.max(220, goalItems.length * 60)}>
             <BarChart
               data={chartData}
               layout="vertical"
-              barSize={14}
+              barSize={12}
               barGap={2}
               margin={{ top: 0, right: 20, bottom: 0, left: 0 }}
             >
@@ -304,6 +306,7 @@ export default function GoalsClient({ goalItems, procedureOptions }: Props) {
                   />
                 ))}
               </Bar>
+              <Bar dataKey="Sucesso" fill="#10b981" fillOpacity={0.55} radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -362,9 +365,14 @@ export default function GoalsClient({ goalItems, procedureOptions }: Props) {
                       style={{ width: `${g.pct}%` }}
                     />
                   </div>
-                  {g.status !== 'done' && (
-                    <p className="text-xs text-slate-600">Faltam {g.remaining} procedimento{g.remaining > 1 ? 's' : ''}</p>
-                  )}
+                  <p className="text-xs text-slate-600">
+                    {g.done} realizado{g.done !== 1 ? 's' : ''}{' '}
+                    <span className="text-emerald-500/80">({g.doneSuccess} com sucesso)</span>{' '}
+                    de {g.target} meta{g.target !== 1 ? 's' : ''}
+                    {g.status !== 'done' && g.remaining > 0 && (
+                      <> · faltam {g.remaining}</>
+                    )}
+                  </p>
                 </div>
 
                 {/* Deadline info */}

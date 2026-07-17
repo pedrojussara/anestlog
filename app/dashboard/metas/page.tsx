@@ -17,6 +17,11 @@ interface ProcedureCount {
   count: number
 }
 
+interface CountPair {
+  total: number
+  success: number
+}
+
 export default async function MetasPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -36,44 +41,46 @@ export default async function MetasPage() {
   const { data: surgeriesRaw } = await db.from('surgeries').select('id').eq('user_id', user.id)
   const surgIds = (surgeriesRaw ?? []).map((s: any) => s.id)
 
-  // Procedure counts (all time, non-block)
-  const procCounts: ProcedureCount[] = []
+  // Procedure counts (all time, non-block) — total realizado e com sucesso
+  const procCountMap: Record<string, CountPair> = {}
   if (surgIds.length > 0) {
     const { data: procsRaw } = await db
       .from('procedures')
-      .select('type')
+      .select('type, status')
       .in('surgery_id', surgIds)
-      .eq('status', 'success')
 
-    const countMap: Record<string, number> = {}
     for (const p of procsRaw ?? []) {
-      countMap[p.type] = (countMap[p.type] ?? 0) + 1
-    }
-    for (const [type, count] of Object.entries(countMap)) {
-      procCounts.push({ type, count })
+      if (!procCountMap[p.type]) procCountMap[p.type] = { total: 0, success: 0 }
+      procCountMap[p.type].total++
+      if (p.status === 'success') procCountMap[p.type].success++
     }
   }
+  const procCounts: ProcedureCount[] = Object.entries(procCountMap)
+    .map(([type, { total }]) => ({ type, count: total }))
 
-  // Nerve block counts by block_type (for bloqueio_periferico goals)
-  const blockTypeCounts: Record<string, number> = {}
+  // Nerve block counts by block_type (for bloqueio_periferico goals) — total e com sucesso
+  const blockTypeCounts: Record<string, CountPair> = {}
   if (surgIds.length > 0) {
     const { data: blockProcsRaw } = await db
       .from('procedures')
-      .select('id')
+      .select('id, status')
       .in('surgery_id', surgIds)
       .eq('type', 'bloqueio_periferico')
-      .eq('status', 'success')
 
-    const blockProcIds = (blockProcsRaw ?? []).map((p: any) => p.id)
+    const blockProcs = (blockProcsRaw ?? []) as { id: string; status: string }[]
+    const blockProcIds = blockProcs.map((p) => p.id)
+    const blockStatusById = new Map(blockProcs.map((p) => [p.id, p.status]))
 
     if (blockProcIds.length > 0) {
       const { data: nerveBlocksRaw } = await db
         .from('nerve_blocks')
-        .select('block_type')
+        .select('procedure_id, block_type')
         .in('procedure_id', blockProcIds)
 
       for (const nb of nerveBlocksRaw ?? []) {
-        blockTypeCounts[nb.block_type] = (blockTypeCounts[nb.block_type] ?? 0) + 1
+        if (!blockTypeCounts[nb.block_type]) blockTypeCounts[nb.block_type] = { total: 0, success: 0 }
+        blockTypeCounts[nb.block_type].total++
+        if (blockStatusById.get(nb.procedure_id) === 'success') blockTypeCounts[nb.block_type].success++
       }
     }
   }
@@ -87,10 +94,15 @@ export default async function MetasPage() {
   today.setHours(0, 0, 0, 0)
 
   const goalItems = goals.map((g) => {
-    // Count: nerve-block goals use blockTypeCounts, others use procCounts
-    const done = g.procedure_type === 'bloqueio_periferico' && g.block_type
-      ? blockTypeCounts[g.block_type] ?? 0
-      : procCounts.find((p) => p.type === g.procedure_type)?.count ?? 0
+    // Count: nerve-block goals use blockTypeCounts, others use procCountMap
+    const isBlockGoal = g.procedure_type === 'bloqueio_periferico' && g.block_type
+    const counts: CountPair = isBlockGoal
+      ? blockTypeCounts[g.block_type as string] ?? { total: 0, success: 0 }
+      : procCountMap[g.procedure_type] ?? { total: 0, success: 0 }
+
+    // Progresso principal da meta é baseado no total realizado (sucesso + falha)
+    const done        = counts.total
+    const doneSuccess = counts.success
 
     const pct       = Math.min(100, Math.round((done / g.target_count) * 100))
     const remaining = Math.max(0, g.target_count - done)
@@ -129,6 +141,7 @@ export default async function MetasPage() {
       label,
       target:         g.target_count,
       done,
+      doneSuccess,
       pct,
       remaining,
       status:         pct >= 100 ? 'done' : pct >= 70 ? 'near' : 'far',
