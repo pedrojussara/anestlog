@@ -5,7 +5,22 @@ type AnySupabaseClient = any
 
 export type FilterPeriod = 'week' | 'month' | 'year' | 'all' | 'custom'
 
-function periodToDate(period: FilterPeriod): string | null {
+export interface DateBounds {
+  from: string | null
+  to: string | null
+}
+
+export function periodToRange(
+  period: FilterPeriod,
+  customFrom?: string,
+  customTo?: string
+): DateBounds {
+  if (period === 'custom') {
+    if (!customFrom || !customTo) return { from: null, to: null }
+    // Garante que "de" nunca seja depois de "até", mesmo que a URL seja manipulada
+    const [from, to] = customFrom <= customTo ? [customFrom, customTo] : [customTo, customFrom]
+    return { from, to }
+  }
   const now = new Date()
   if (period === 'week') {
     now.setDate(now.getDate() - 7)
@@ -14,9 +29,9 @@ function periodToDate(period: FilterPeriod): string | null {
   } else if (period === 'year') {
     now.setFullYear(now.getFullYear() - 1)
   } else {
-    return null
+    return { from: null, to: null }
   }
-  return now.toISOString().split('T')[0]
+  return { from: now.toISOString().split('T')[0], to: null }
 }
 
 export async function getDashboardStats(
@@ -24,9 +39,11 @@ export async function getDashboardStats(
   userId: string,
   period: FilterPeriod = 'year',
   specialty?: string,
-  anesthesiaType?: AnesthesiaType
+  anesthesiaType?: AnesthesiaType,
+  customFrom?: string,
+  customTo?: string
 ): Promise<DashboardStats> {
-  const fromDate = periodToDate(period)
+  const { from: fromDate, to: toDate } = periodToRange(period, customFrom, customTo)
 
   // Base query builder
   let surgeriesQuery = supabase
@@ -36,6 +53,7 @@ export async function getDashboardStats(
     .order('date', { ascending: true })
 
   if (fromDate) surgeriesQuery = surgeriesQuery.gte('date', fromDate)
+  if (toDate) surgeriesQuery = surgeriesQuery.lte('date', toDate)
   if (specialty) surgeriesQuery = surgeriesQuery.eq('specialty', specialty)
   if (anesthesiaType) surgeriesQuery = surgeriesQuery.contains('anesthesia_types', [anesthesiaType])
 

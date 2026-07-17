@@ -5,7 +5,7 @@ import {
   Activity, Stethoscope, CheckCircle2, XCircle, Wind, PlusCircle,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import { getDashboardStats, getFilterOptions, type FilterPeriod } from '@/lib/dashboard'
+import { getDashboardStats, getFilterOptions, periodToRange, type FilterPeriod } from '@/lib/dashboard'
 import type { AnesthesiaType } from '@/types'
 
 import StatCard from '@/components/dashboard/StatCard'
@@ -20,6 +20,8 @@ interface Props {
     period?: string
     specialty?: string
     anesthesia?: string
+    from?: string
+    to?: string
   }>
 }
 
@@ -32,20 +34,30 @@ export default async function DashboardPage({ searchParams }: Props) {
   const period    = (sp.period    ?? 'year')     as FilterPeriod
   const specialty = sp.specialty  ?? undefined
   const anesthesia = sp.anesthesia as AnesthesiaType | undefined
+  const customFrom = sp.from
+  const customTo   = sp.to
 
   // Also fetch procedure stats for the procedures chart
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
   const [stats, filterOptions] = await Promise.all([
-    getDashboardStats(supabase, user.id, period, specialty, anesthesia),
+    getDashboardStats(supabase, user.id, period, specialty, anesthesia, customFrom, customTo),
     getFilterOptions(supabase, user.id),
   ])
 
   // Compute procedure stats from existing data (reuse analytics logic inline)
   const { PROCEDURE_TYPES } = await import('@/lib/constants')
   const procMap: Record<string, { success: number; failure: number }> = {}
-  // We need raw procedure data — fetch it
-  const surgIds = (await db.from('surgeries').select('id').eq('user_id', user.id)).data?.map((s: any) => s.id) ?? []
+
+  // Mesmo filtro (período + especialidade + anestesia) usado em getDashboardStats,
+  // para que o gráfico de procedimentos reflita o intervalo selecionado
+  const { from: rangeFrom, to: rangeTo } = periodToRange(period, customFrom, customTo)
+  let surgeriesForProcsQuery = db.from('surgeries').select('id').eq('user_id', user.id)
+  if (rangeFrom)  surgeriesForProcsQuery = surgeriesForProcsQuery.gte('date', rangeFrom)
+  if (rangeTo)    surgeriesForProcsQuery = surgeriesForProcsQuery.lte('date', rangeTo)
+  if (specialty)  surgeriesForProcsQuery = surgeriesForProcsQuery.eq('specialty', specialty)
+  if (anesthesia) surgeriesForProcsQuery = surgeriesForProcsQuery.contains('anesthesia_types', [anesthesia])
+  const surgIds = (await surgeriesForProcsQuery).data?.map((s: any) => s.id) ?? []
   const { data: rawProcs } = surgIds.length > 0
     ? await db.from('procedures').select('type, status').in('surgery_id', surgIds)
     : { data: [] }
