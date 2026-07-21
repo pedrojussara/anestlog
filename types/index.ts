@@ -110,6 +110,7 @@ export interface StudySession {
   studied_at: string // ISO date string (YYYY-MM-DD)
   notes: string | null
   source: string | null
+  current_difficulty: 'dificil' | 'medio' | 'facil' | null
   created_at: string
 }
 
@@ -122,6 +123,9 @@ export interface ReviewTask {
   review_number: number
   task_type: 'flashcards' | 'questoes' | 'flashcards_questoes' | 'simulado' | 'revisao_resumo'
   suggested_questions: number | null
+  suggested_flashcards: number | null
+  questions_correct: number | null
+  questions_total: number | null
   status: 'pending' | 'completed' | 'skipped'
   difficulty_rating: 'dificil' | 'medio' | 'facil' | null
   completed_at: string | null

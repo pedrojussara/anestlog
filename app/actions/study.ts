@@ -6,11 +6,18 @@ import {
   buildInitialReviewSchedule,
   buildMaintenanceSchedule,
   rescheduleFutureReviews,
+  computeDifficultyFromScore,
   todayISODate,
+  diffDays,
   DEFAULT_MAX_DAILY_REVIEWS,
+  DEFAULT_DIFFICULTY,
+  DIFFICULTY_LABELS,
+  MIN_SAMPLE_SIZE,
   REVIEW_PLAN,
   type DifficultyRating,
   type PendingReview,
+  type RescheduledReview,
+  type ScheduledReview,
 } from '@/lib/study-scheduler'
 import type { StudyArea } from '@/types'
 
@@ -81,6 +88,7 @@ export async function createStudySession(
       review_number: r.reviewNumber,
       task_type: r.taskType,
       suggested_questions: r.suggestedQuestions,
+      suggested_flashcards: r.suggestedFlashcards,
     }))
   )
 
@@ -90,19 +98,20 @@ export async function createStudySession(
   return { sessionId: session.id as string }
 }
 
-export async function completeReview(reviewId: string, difficultyRating: DifficultyRating) {
+export type CompleteReviewPayload =
+  | { mode: 'self'; difficultyRating: DifficultyRating }
+  | { mode: 'score'; questionsCorrect: number; questionsTotal: number }
+
+export async function completeReview(reviewId: string, payload: CompleteReviewPayload) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autenticado.' }
-  if (!['dificil', 'medio', 'facil'].includes(difficultyRating)) {
-    return { error: 'Avaliação de dificuldade inválida.' }
-  }
 
   const db = supabase as AnySupabaseClient
 
   const { data: review, error: reviewFetchError } = await db
     .from('review_tasks')
-    .select('id, session_id, topic_id, review_number, status')
+    .select('id, session_id, topic_id, review_number, status, task_type')
     .eq('id', reviewId)
     .eq('user_id', user.id)
     .single()
@@ -110,17 +119,78 @@ export async function completeReview(reviewId: string, difficultyRating: Difficu
   if (reviewFetchError || !review) return { error: 'Revisão não encontrada.' }
   if (review.status !== 'pending') return { error: 'Esta revisão já foi concluída ou pulada.' }
 
+  const isFlashcardsOnly = review.task_type === 'flashcards'
+  if (isFlashcardsOnly && payload.mode !== 'self') {
+    return { error: 'Esta revisão é avaliada por autoavaliação (Difícil/Médio/Fácil).' }
+  }
+  if (!isFlashcardsOnly && payload.mode !== 'score') {
+    return { error: 'Informe o resultado das questões (acertos e total).' }
+  }
+
   const completedAt = todayISODate()
+  const updatePayload: Record<string, unknown> = {
+    status: 'completed',
+    completed_at: new Date().toISOString(),
+  }
 
-  const { error: updateError } = await db
-    .from('review_tasks')
-    .update({
-      status: 'completed',
-      difficulty_rating: difficultyRating,
-      completed_at: new Date().toISOString(),
-    })
-    .eq('id', reviewId)
+  let resultDifficulty: DifficultyRating
+  let feedbackHead: string
 
+  if (payload.mode === 'self') {
+    if (!['dificil', 'medio', 'facil'].includes(payload.difficultyRating)) {
+      return { error: 'Avaliação de dificuldade inválida.' }
+    }
+    resultDifficulty = payload.difficultyRating
+    updatePayload.difficulty_rating = resultDifficulty
+    feedbackHead = `Autoavaliação: ${DIFFICULTY_LABELS[resultDifficulty]}.`
+  } else {
+    const { questionsCorrect, questionsTotal } = payload
+    if (
+      !Number.isInteger(questionsCorrect) || !Number.isInteger(questionsTotal) ||
+      questionsTotal < 1 || questionsCorrect < 0 || questionsCorrect > questionsTotal
+    ) {
+      return { error: 'Informe valores válidos (acertos ≤ total, total ≥ 1).' }
+    }
+
+    const { data: sessionRow } = await db
+      .from('study_sessions')
+      .select('current_difficulty')
+      .eq('id', review.session_id)
+      .single()
+
+    const previousDifficulty: DifficultyRating = sessionRow?.current_difficulty ?? DEFAULT_DIFFICULTY
+
+    if (review.task_type === 'questoes') {
+      // Única revisão que afere/reafere a faixa vigente do tema
+      const outcome = computeDifficultyFromScore(questionsCorrect, questionsTotal, previousDifficulty)
+      resultDifficulty = outcome.difficulty
+
+      if (!outcome.lowSample) {
+        const { error: settingsError } = await db
+          .from('study_sessions')
+          .update({ current_difficulty: resultDifficulty })
+          .eq('id', review.session_id)
+        if (settingsError) return { error: 'Erro ao atualizar faixa de dificuldade.' }
+      }
+
+      feedbackHead = outcome.lowSample
+        ? `${outcome.percentage}% — faixa ${DIFFICULTY_LABELS[resultDifficulty]} mantida (amostra pequena, mínimo ${MIN_SAMPLE_SIZE} questões).`
+        : `${outcome.percentage}% — faixa ${DIFFICULTY_LABELS[resultDifficulty]}.`
+    } else {
+      // flashcards_questoes / simulado / revisao_resumo: registra o resultado
+      // mas não redefine a faixa vigente do tema (isso é papel exclusivo das
+      // revisões de questões puras)
+      const percentage = Math.round((questionsCorrect / questionsTotal) * 100)
+      resultDifficulty = previousDifficulty
+      feedbackHead = `${percentage}% — faixa ${DIFFICULTY_LABELS[resultDifficulty]} (mantida).`
+    }
+
+    updatePayload.questions_correct = questionsCorrect
+    updatePayload.questions_total = questionsTotal
+    updatePayload.difficulty_rating = resultDifficulty
+  }
+
+  const { error: updateError } = await db.from('review_tasks').update(updatePayload).eq('id', reviewId)
   if (updateError) return { error: 'Erro ao concluir revisão.' }
 
   const { data: pendingRaw } = await db
@@ -137,14 +207,16 @@ export async function completeReview(reviewId: string, difficultyRating: Difficu
       scheduledDate: r.scheduled_date,
     })
   )
+
   const maxDailyReviews = await getMaxDailyReviews(db, user.id)
   const getExistingCount = makeDailyCountFetcher(db, user.id)
 
+  let rescheduled: RescheduledReview[] = []
   if (pendingReviews.length > 0) {
-    const rescheduled = await rescheduleFutureReviews(
+    rescheduled = await rescheduleFutureReviews(
       review.review_number,
       completedAt,
-      difficultyRating,
+      resultDifficulty,
       pendingReviews,
       maxDailyReviews,
       getExistingCount
@@ -153,13 +225,14 @@ export async function completeReview(reviewId: string, difficultyRating: Difficu
     for (const r of rescheduled) {
       const { error } = await db
         .from('review_tasks')
-        .update({ scheduled_date: r.scheduledDate })
+        .update({ scheduled_date: r.scheduledDate, suggested_flashcards: r.suggestedFlashcards })
         .eq('id', r.id)
       if (error) return { error: 'Erro ao reagendar revisões futuras.' }
     }
   }
 
   // Após a última revisão do plano inicial, gera manutenção trimestral até a data do TEA
+  let maintenanceScheduled: ScheduledReview[] = []
   if (review.review_number === LAST_INITIAL_REVIEW_NUMBER) {
     const { data: settings } = await db
       .from('study_settings')
@@ -170,16 +243,16 @@ export async function completeReview(reviewId: string, difficultyRating: Difficu
     const teaExamDate = settings?.tea_exam_date ?? null
 
     if (teaExamDate) {
-      const maintenance = await buildMaintenanceSchedule(
+      maintenanceScheduled = await buildMaintenanceSchedule(
         completedAt,
         teaExamDate,
         maxDailyReviews,
         getExistingCount
       )
 
-      if (maintenance.length > 0) {
+      if (maintenanceScheduled.length > 0) {
         const { error } = await db.from('review_tasks').insert(
-          maintenance.map((r) => ({
+          maintenanceScheduled.map((r) => ({
             user_id: user.id,
             session_id: review.session_id,
             topic_id: review.topic_id,
@@ -187,6 +260,7 @@ export async function completeReview(reviewId: string, difficultyRating: Difficu
             review_number: r.reviewNumber,
             task_type: r.taskType,
             suggested_questions: r.suggestedQuestions,
+            suggested_flashcards: r.suggestedFlashcards,
           }))
         )
         if (error) return { error: 'Erro ao agendar revisões de manutenção.' }
@@ -195,6 +269,20 @@ export async function completeReview(reviewId: string, difficultyRating: Difficu
   }
 
   revalidatePath('/dashboard/estudos')
+
+  const candidateDates = [
+    ...rescheduled.map((r) => r.scheduledDate),
+    ...maintenanceScheduled.map((r) => r.scheduledDate),
+  ].sort()
+
+  const nextClause = candidateDates.length > 0
+    ? (() => {
+        const days = diffDays(completedAt, candidateDates[0])
+        return ` Próxima revisão em ${days} dia${days === 1 ? '' : 's'}.`
+      })()
+    : ' Ciclo de revisões deste tema concluído.'
+
+  return { feedback: `${feedbackHead}${nextClause}` }
 }
 
 export async function skipReview(reviewId: string) {
@@ -220,6 +308,52 @@ export async function skipReview(reviewId: string) {
     .eq('id', reviewId)
 
   if (error) return { error: 'Erro ao pular revisão.' }
+
+  revalidatePath('/dashboard/estudos')
+}
+
+export async function deleteReviewTask(reviewId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autenticado.' }
+
+  const db = supabase as AnySupabaseClient
+
+  const { data: review } = await db
+    .from('review_tasks')
+    .select('id')
+    .eq('id', reviewId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (!review) return { error: 'Revisão não encontrada.' }
+
+  const { error } = await db.from('review_tasks').delete().eq('id', reviewId)
+  if (error) return { error: 'Erro ao cancelar revisão.' }
+
+  revalidatePath('/dashboard/estudos')
+}
+
+export async function deleteStudySession(sessionId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autenticado.' }
+
+  const db = supabase as AnySupabaseClient
+
+  const { data: session } = await db
+    .from('study_sessions')
+    .select('id')
+    .eq('id', sessionId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (!session) return { error: 'Sessão não encontrada.' }
+
+  // review_tasks referencia session_id com "on delete cascade": as revisões
+  // geradas por esta sessão são removidas automaticamente pelo banco.
+  const { error } = await db.from('study_sessions').delete().eq('id', sessionId)
+  if (error) return { error: 'Erro ao deletar sessão de estudo.' }
 
   revalidatePath('/dashboard/estudos')
 }

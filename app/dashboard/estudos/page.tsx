@@ -2,16 +2,20 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { BookOpen, Plus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import { getReviewTasksWithTopic } from '@/lib/study'
+import { getReviewTasksWithTopic, getStudySessionsWithProgress } from '@/lib/study'
 import { todayISODate } from '@/lib/study-scheduler'
 import EstudosClient from '@/components/estudos/EstudosClient'
+import StudySessionsList from '@/components/estudos/StudySessionsList'
 
 export default async function EstudosPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const reviews = await getReviewTasksWithTopic(supabase, user.id)
+  const [reviews, sessions] = await Promise.all([
+    getReviewTasksWithTopic(supabase, user.id),
+    getStudySessionsWithProgress(supabase, user.id),
+  ])
   const todayKey = todayISODate()
   const pendingCount = reviews.filter((r) => r.status === 'pending').length
 
@@ -43,6 +47,8 @@ export default async function EstudosPage() {
       </div>
 
       <EstudosClient reviews={reviews} todayKey={todayKey} />
+
+      <StudySessionsList sessions={sessions} />
     </div>
   )
 }
