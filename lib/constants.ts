@@ -98,3 +98,20 @@ export const NERVE_BLOCK_GROUPS = [
 // Lista flat derivada dos grupos — usada em GoalsClient e analytics
 export const NERVE_BLOCK_TYPES: readonly string[] =
   NERVE_BLOCK_GROUPS.flatMap((g) => g.items)
+
+export const STUDY_AREAS = [
+  'Farmacologia',
+  'Fisiologia',
+  'Anestesia Regional',
+  'Via Aérea',
+  'Anestesia Cardiovascular',
+  'Neuroanestesia',
+  'Obstetrícia',
+  'Pediatria',
+  'Dor',
+  'Terapia Intensiva',
+  'Equipamentos e Monitorização',
+  'Anestesia Ambulatorial',
+  'Complicações',
+  'Ética e Legislação',
+] as const

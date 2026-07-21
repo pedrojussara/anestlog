@@ -76,6 +76,65 @@ export interface ProcedureWithBlocks extends Procedure {
   nerve_blocks: NerveBlock[]
 }
 
+// ---- Estudos (TEA/TSA) ----
+
+export type StudyArea =
+  | 'Farmacologia'
+  | 'Fisiologia'
+  | 'Anestesia Regional'
+  | 'Via Aérea'
+  | 'Anestesia Cardiovascular'
+  | 'Neuroanestesia'
+  | 'Obstetrícia'
+  | 'Pediatria'
+  | 'Dor'
+  | 'Terapia Intensiva'
+  | 'Equipamentos e Monitorização'
+  | 'Anestesia Ambulatorial'
+  | 'Complicações'
+  | 'Ética e Legislação'
+
+export interface StudyTopic {
+  id: string
+  name: string
+  area: StudyArea
+  is_custom: boolean
+  created_by: string | null
+  created_at: string
+}
+
+export interface StudySession {
+  id: string
+  user_id: string
+  topic_id: string
+  studied_at: string // ISO date string (YYYY-MM-DD)
+  notes: string | null
+  source: string | null
+  created_at: string
+}
+
+export interface ReviewTask {
+  id: string
+  user_id: string
+  session_id: string
+  topic_id: string
+  scheduled_date: string // ISO date string (YYYY-MM-DD)
+  review_number: number
+  task_type: 'flashcards' | 'questoes' | 'flashcards_questoes' | 'simulado' | 'revisao_resumo'
+  suggested_questions: number | null
+  status: 'pending' | 'completed' | 'skipped'
+  difficulty_rating: 'dificil' | 'medio' | 'facil' | null
+  completed_at: string | null
+  created_at: string
+}
+
+export interface StudySettings {
+  user_id: string
+  max_daily_reviews: number
+  tea_exam_date: string | null
+  tsa_exam_date: string | null
+}
+
 // ---- Dashboard ----
 
 export interface DashboardStats {
@@ -98,6 +157,10 @@ export type Database = {
       surgeries: { Row: Surgery; Insert: Omit<Surgery, 'id' | 'created_at'>; Update: Partial<Omit<Surgery, 'id'>> }
       procedures: { Row: Procedure; Insert: Omit<Procedure, 'id' | 'created_at'>; Update: Partial<Omit<Procedure, 'id'>> }
       nerve_blocks: { Row: NerveBlock; Insert: Omit<NerveBlock, 'id' | 'created_at'>; Update: Partial<Omit<NerveBlock, 'id'>> }
+      study_topics: { Row: StudyTopic; Insert: Omit<StudyTopic, 'id' | 'created_at'>; Update: Partial<Omit<StudyTopic, 'id'>> }
+      study_sessions: { Row: StudySession; Insert: Omit<StudySession, 'id' | 'created_at'>; Update: Partial<Omit<StudySession, 'id'>> }
+      review_tasks: { Row: ReviewTask; Insert: Omit<ReviewTask, 'id' | 'created_at'>; Update: Partial<Omit<ReviewTask, 'id'>> }
+      study_settings: { Row: StudySettings; Insert: StudySettings; Update: Partial<Omit<StudySettings, 'user_id'>> }
     }
   }
 }

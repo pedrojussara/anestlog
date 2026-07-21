@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import {
   Activity, LayoutDashboard, Stethoscope, LogOut,
-  BarChart2, Zap, XCircle, Users, UserCircle, Target,
+  BarChart2, Zap, XCircle, Users, UserCircle, Target, BookOpen,
 } from 'lucide-react'
 import { logout } from '@/app/actions/auth'
 import MobileBottomNav from '@/components/layout/MobileBottomNav'
@@ -13,6 +13,7 @@ const navItems = [
   { href: '/dashboard/bloqueios',    label: 'Bloqueios', icon: Zap },
   { href: '/dashboard/falhas',       label: 'Falhas',    icon: XCircle },
   { href: '/dashboard/metas',        label: 'Metas',     icon: Target },
+  { href: '/dashboard/estudos',      label: 'Estudos',   icon: BookOpen },
   { href: '/dashboard/comparacoes',  label: 'Social',    icon: Users },
   { href: '/dashboard/perfil',       label: 'Perfil',    icon: UserCircle },
 ]

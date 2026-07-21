@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, BarChart2, Target, PlusCircle,
-  MoreHorizontal, Stethoscope, Zap, XCircle, Users, UserCircle, X,
+  MoreHorizontal, Stethoscope, Zap, XCircle, Users, UserCircle, X, BookOpen,
 } from 'lucide-react'
 
 const mainItems = [
@@ -15,6 +15,7 @@ const mainItems = [
 ]
 
 const moreItems = [
+  { href: '/dashboard/estudos',     label: 'Estudos',   icon: BookOpen },
   { href: '/dashboard/cirurgias',   label: 'Histórico', icon: Stethoscope },
   { href: '/dashboard/bloqueios',   label: 'Bloqueios', icon: Zap },
   { href: '/dashboard/falhas',      label: 'Falhas',    icon: XCircle },
